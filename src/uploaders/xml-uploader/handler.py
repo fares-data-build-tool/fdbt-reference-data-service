@@ -2,8 +2,10 @@ import os
 import sys
 import boto3
 import pymysql
+import xmltodict
 import json
 import logging
+import xml.etree.ElementTree as ET
 from urllib.parse import unquote_plus
 
 file_dir = '/tmp/file.xml'
@@ -19,10 +21,15 @@ def handler(event, context):
     bucket = event['Records'][0]['s3']['bucket']['name']
     key = unquote_plus(event['Records'][0]['s3']
                        ['object']['key'], encoding='utf-8')
+    xmltodict_namespaces = {'http://www.transxchange.org.uk/': None}
 
     try:
-        s3_object = s3.get_object(Bucket=bucket, Key=key)
-        s3_json = json.loads(s3_object['Body'].read().decode('utf-8'))
+        s3.download_file(bucket, key, file_dir)
+        tree = ET.parse(file_dir)
+        xml_data = tree.getroot()
+        xml_string = ET.tostring(xml_data, encoding='utf-8', method='xml')
+        data_dict = xmltodict.parse(xml_string, process_namespaces=True, namespaces=xmltodict_namespaces)
+        print(json.dumps(data_dict, indent=4))
 
         # DATA PROCESSING FUNCTIONS HERE
 
