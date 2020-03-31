@@ -16,7 +16,7 @@ logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
 
-def lambda_handler(event, context):
+def handler(event, context):
     try:
 
         bucket = event['Records'][0]['s3']['bucket']['name']
