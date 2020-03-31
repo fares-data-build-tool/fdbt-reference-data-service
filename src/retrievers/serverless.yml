@@ -9,18 +9,27 @@ provider:
     timeout: 900
     memorySize: 2048
     iamRoleStatements:
-        - Effect: 'Allow'
+        - Effect: "Allow"
           Action:
-              - 'ssm:GetParameter'
-          Resource: '*'
-        - Effect: 'Allow'
+              - "ssm:GetParameter"
+          Resource: "*"
+        - Effect: "Allow"
           Action:
-              - 's3:PutObject'
-              - 's3:GetObject'
+              - "s3:PutObject"
+              - "s3:GetObject"
           Resource:
-              - !Sub arn:aws:s3:::fdbt-csv-reference-data-${self:provider.stage}/*
-              - !Sub arn:aws:s3:::fdbt-xml-reference-data-${self:provider.stage}/*
-              - !Sub arn:aws:s3:::fdbt-tnds-data-zipped-${self:provider.stage}/*
+              - Fn::Join:
+                    - ""
+                    - - "arn:aws:s3:::"
+                    - fdbt-csv-reference-data-${self:provider.stage}
+              - Fn::Join:
+                    - ""
+                    - - "arn:aws:s3:::"
+                    - fdbt-xml-reference-data-${self:provider.stage}
+              - Fn::Join:
+                    - ""
+                    - - "arn:aws:s3:::"
+                    - fdbt-tnds-data-zipped-${self:provider.stage}
 
 custom:
     enableSchedule:
@@ -73,7 +82,7 @@ functions:
 
 package:
     exclude:
-        - '*'
+        - "*"
     include:
         - ./csv-retriever/*
         - ./tnds-ftp-retriever/*
