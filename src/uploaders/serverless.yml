@@ -44,6 +44,9 @@ provider:
         - ec2:DescribeVpcs
       Resource: "*"
 
+plugins:
+  - serverless-python-requirements
+
 functions:
   CsvUploader:
     handler: handlers/csv-uploader/handler
@@ -61,7 +64,7 @@ functions:
 
 package:
   exclude:
-    - "*"
+    - node_modules/**
   include:
     - ./csv-uploader/*
     - ./xml-uploader/*
