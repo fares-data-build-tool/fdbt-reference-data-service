@@ -32,37 +32,15 @@ def connect_to_database():
         return connection
     except pymysql.MySQLError as e:
         logger.error(
-            "ERROR: Unexpected error: Could not connect to MySQL instance.")
+            "ERROR! Unexpected error. Could not connect to MySQL instance")
         logger.error(e)
         sys.exit()
+        raise e
 
-    logger.info("SUCCESS: Connection to RDS MySQL instance succeeded")
-
-
-def insert_into_tnds_service_table(connection, data_dict):
-    services = data_dict['TransXChange']['Services']['Service']
-    noc_code = data_dict['TransXChange']['Operators']['Operator']['NationalOperatorCode']
-    line_name = services['Lines']['Line']['LineName']
-    start_date = services['OperatingPeriod']['StartDate']
-
-    # Both below are from servicereport.csv
-    region_code = ''
-    region_operator_code = ''
-
-    service_code = services['ServiceCode']
-    description = services['Description']
-    query = 'INSERT INTO tndsService (nocCode, lineName, startDate, regionCode, regionOperatorCode, serviceCode, description) VALUES (%s, %s, %s, %s, %s, %s, %s)', (
-        noc_code, line_name, start_date, region_code, region_operator_code, service_code, description)
-
-    with connection.cursor() as cursor:
-        cursor.execute(query)
-        connection.commit()
-
-    logger.info("SUCCESS: Data insertion to RDS MySQL instance succeeded")
-    return
+    logger.info("SUCCESS! Connection to RDS MySQL instance succeeded")
 
 
-def insert_into_tnds_operator_service_table(connection, data_dict):
+def insert_into_tnds_operator_service_table(cursor, data_dict):
     operators = data_dict['TransXChange']['Operators']['Operator']
     services = data_dict['TransXChange']['Services']['Service']
     noc_code = operators['NationalOperatorCode']
@@ -74,50 +52,77 @@ def insert_into_tnds_operator_service_table(connection, data_dict):
     query = 'INSERT INTO tndsOperatorService (nocCode, lineName, startDate, operatorShortName, serviceDescription) VALUES (%s, %s, %s, %s, %s)', (
         noc_code, line_name, start_date, operator_short_name, service_description)
 
-    with connection.cursor() as cursor:
+    try:
         cursor.execute(query)
-        connection.commit()
+        operator_service_id = cursor.lastrowid
+    except Exception as e:
+        logger.error(
+            "ERROR! Unexpected error. Could not execute query on tndsOperatorService table")
+        logger.error(e)
+        raise e
 
-    logger.info("SUCCESS: Data insertion to RDS MySQL instance succeeded")
-    return
+    logger.info("SUCCESS! Data successfully inserted into tndsOperatorService table")
+    return operator_service_id
 
 
-def insert_into_tnds_journey_pattern_section_table(connection, data_dict):
-    # TODO Modify query to be nested/sub query with SELECT and INSERT
-    query = 'INSERT INTO tndsJourneyPatternSection (operatorServiceId) VALUES (%s)', ()
+def insert_into_tnds_journey_pattern_section_table(cursor, data_dict, operator_service_id):
+    query = 'INSERT INTO tndsJourneyPatternSection (operatorServiceId) VALUES (%s)', (
+        operator_service_id)
 
-    with connection.cursor() as cursor:
+    try:
         cursor.execute(query)
-        connection.commit()
+        journey_pattern_section_id = cursor.lastrowid
+    except Exception as e:
+        logger.error(
+            "ERROR! Unexpected error. Could not execute query on tndsJourneyPatternSection table")
+        logger.error(e)
+        raise e
 
-    logger.info("SUCCESS: Data insertion to RDS MySQL instance succeeded")
-    return
+    logger.info("SUCCESS! Data successfully inserted into tndsJourneyPatternSection table")
+    return journey_pattern_section_id
 
 
-def insert_into_tnds_journey_pattern_timing_link_table(connection, data_dict):
-    # TODO Modify query to be nested/sub query with SELECT and INSERT
-    query = 'INSERT INTO tndsJourneyPatternLink (journeyPatternSectionId, fromAtcoCode, fromTimingStatus, toAtcoCode, toTimingStatus, runtime, order) VALUES ()'.format
+def insert_into_tnds_journey_pattern_link_table(cursor, data_dict, journey_pattern_section_id):
+    fromAtcoCode = ''
+    fromTimingStatus = ''
+    toAtcoCode = ''
+    toTimingStatus = ''
+    runtime = ''
+    order = ''
+    query = 'INSERT INTO tndsJourneyPatternLink (journeyPatternSectionId, fromAtcoCode, fromTimingStatus, toAtcoCode, toTimingStatus, runtime, order) VALUES (%s, %s, )', (
+        journey_pattern_section_id, fromAtcoCode, fromTimingStatus, toAtcoCode, toTimingStatus, runtime, order)
 
-    with connection.cursor() as cursor:
+    try:
         cursor.execute(query)
-        connection.commit()
+    except Exception as e:
+        logger.error(
+            "ERROR! Unexpected error. Could not execute query on tndsJourneyPatternLink table")
+        logger.error(e)
+        raise e
 
-    logger.info("SUCCESS: Data insertion to RDS MySQL instance succeeded")
+    logger.info("SUCCESS! Data successfully inserted into tndsJourneyPatternLink table")
     return
 
 
 def write_to_database(data_dict):
     connection = connect_to_database()
-    # TODO Use transactions
+
     try:
-        insert_into_tnds_service_table(connection, data_dict)
-        insert_into_tnds_operator_service_table(connection, data_dict)
-        insert_into_tnds_journey_pattern_section_table(connection, data_dict)
-        insert_into_tnds_journey_pattern_timing_link_table(
-            connection, data_dict)
+        with connection.cursor() as cursor:
+            operator_service_id = insert_into_tnds_operator_service_table(
+                cursor, data_dict)
+            journey_pattern_section_id = insert_into_tnds_journey_pattern_section_table(
+                cursor, data_dict, operator_service_id)
+            insert_into_tnds_journey_pattern_link_table(
+                cursor, data_dict, journey_pattern_section_id)
+            connection.commit()
+
     except Exception as e:
+        connection.rollback()
+        logger.error("ERROR! Unexpected error. Could not write to database")
         logger.error(e)
         raise e
+
     finally:
         connection.close()
 
@@ -126,7 +131,9 @@ def handler(event, context):
     bucket = event['Records'][0]['s3']['bucket']['name']
     key = unquote_plus(event['Records'][0]['s3']
                        ['object']['key'], encoding='utf-8')
+
     file_dir = '/tmp/' + key.split('/')[-1]
+    
     xmltodict_namespaces = {'http://www.transxchange.org.uk/': None}
     table_names = ['tndsService', 'tndsOperatorService',
                    'tndsJourneyPatternSection', 'tndsJourneyPatternLink']
@@ -143,5 +150,5 @@ def handler(event, context):
         write_to_database(data_dict)
 
     except Exception as e:
-        print(e)
+        logger.error(e)
         raise e
