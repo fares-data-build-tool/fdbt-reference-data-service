@@ -12,17 +12,29 @@ jobs:
           paths:
             - "*"
 
-    audit-reference-data-uploaders:
-      docker:
-        - image: circleci/node:12
-      working_directory: ~/project
-      steps:
-        - attach_workspace:
-            at: ~/project
-        - run:
-            command: |
-              cd src/uploaders
-              npx audit-ci --moderate
+  audit-reference-data-uploaders:
+    docker:
+    - image: circleci/node:12
+    working_directory: ~/project
+    steps:
+      - attach_workspace:
+          at: ~/project
+      - run:
+          command: |
+            cd src/uploaders
+            npx audit-ci --moderate
+
+  test-reference-data-uploaders:
+    docker:
+      - image: circleci/python:3.8
+    working_directory: ~/project
+    steps:
+      - attach_workspace:
+          at: ~/project
+      - run:
+          command: |
+            cd src/uploaders
+            pytest -v
 
   deploy-reference-data-uploaders-to-test:
     docker:
@@ -60,17 +72,17 @@ jobs:
             export SLS_DEBUG="*" && sls deploy --stage=preprod
             echo "Finished deploy"
 
-    audit-reference-data-retrievers:
-      docker:
-        - image: circleci/node:12
-      working_directory: ~/project
-      steps:
-        - attach_workspace:
-            at: ~/project
-        - run:
-            command: |
-              cd src/retrievers
-              npx audit-ci --moderate
+  audit-reference-data-retrievers:
+    docker:
+      - image: circleci/node:12
+    working_directory: ~/project
+    steps:
+      - attach_workspace:
+          at: ~/project
+      - run:
+          command: |
+            cd src/retrievers
+            npx audit-ci --moderate
 
   deploy-reference-data-retrievers-to-test:
     docker:
@@ -161,9 +173,18 @@ workflows:
                 - develop
                 - master
 
-      - deploy-reference-data-uploaders-to-test:
+      - test-reference-data-uploaders:
           requires:
             - audit-reference-data-uploaders
+          filters:
+            branches:
+              only:
+                - develop
+                - master
+
+      - deploy-reference-data-uploaders-to-test:
+          requires:
+            - test-reference-data-uploaders
           context: tfn-fdbt-test
           filters:
             branches:
@@ -172,7 +193,7 @@ workflows:
       - hold-reference-data-uploaders-preprod-deployment:
           type: approval
           requires:
-            - test-reference-data-resources
+            - test-reference-data-uploaders
           filters:
             branches:
               only: master
