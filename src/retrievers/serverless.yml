@@ -18,18 +18,9 @@ provider:
               - "s3:PutObject"
               - "s3:GetObject"
           Resource:
-              - Fn::Join:
-                    - ""
-                    - - "arn:aws:s3:::"
-                    - fdbt-csv-reference-data-${self:provider.stage}
-              - Fn::Join:
-                    - ""
-                    - - "arn:aws:s3:::"
-                    - fdbt-xml-reference-data-${self:provider.stage}
-              - Fn::Join:
-                    - ""
-                    - - "arn:aws:s3:::"
-                    - fdbt-tnds-data-zipped-${self:provider.stage}
+              - !Sub arn:aws:s3:::fdbt-csv-reference-data-${self:provider.stage}/*
+              - !Sub arn:aws:s3:::fdbt-xml-reference-data-${self:provider.stage}/*
+              - !Sub arn:aws:s3:::fdbt-tnds-data-zipped-${self:provider.stage}/*
 
 custom:
     enableSchedule:
