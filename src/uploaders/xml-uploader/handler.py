@@ -65,7 +65,55 @@ def insert_into_tnds_operator_service_table(cursor, data_dict):
     return operator_service_id
 
 
-def insert_into_tnds_journey_pattern_section_table(cursor, data_dict, operator_service_id):
+def collect_journey_pattern_section_refs(raw_journey_patterns):
+    journey_pattern_section_refs = []
+    for raw_journey_pattern in raw_journey_patterns:
+        raw_journey_pattern_section_refs = raw_journey_pattern['JourneyPatternSectionRefs']
+        journey_pattern_section_refs.append(raw_journey_pattern_section_refs)
+    return journey_pattern_section_refs
+
+
+def collect_journey_patterns(data_dict):
+    raw_journey_patterns = data_dict['TransXChange']['Services']['Service']['StandardService']['JourneyPattern']
+    raw_journey_pattern_sections = data_dict['TransXChange']['JourneyPatternSections']['JourneyPatternSection']
+
+    journey_pattern_section_refs = collect_journey_pattern_section_refs(raw_journey_patterns)
+
+    journey_patterns = []
+    for journey_pattern in journey_pattern_section_refs:
+        journey_pattern_sections = []
+        for journey_pattern_section_ref in journey_pattern:
+            for raw_journey_pattern_section in raw_journey_pattern_sections:
+                selected_raw_journey_pattern_section = []
+                if raw_journey_pattern_section['@id'] == journey_pattern_section_ref:
+                    selected_raw_journey_pattern_section = raw_journey_pattern_section
+                if len(selected_raw_journey_pattern_section) > 0:
+                    raw_journey_pattern_timing_links = selected_raw_journey_pattern_section['JourneyPatternTimingLink']
+                    journey_pattern_timing_links = []
+                    for raw_journey_pattern_timing_link in raw_journey_pattern_timing_links:
+                        journey_pattern_timing_link = {}
+                        journey_pattern_timing_link['from_atco_code'] = raw_journey_pattern_timing_link['From']['StopPointRef']
+                        journey_pattern_timing_link['from_timing_status'] = raw_journey_pattern_timing_link['From']['TimingStatus']
+                        journey_pattern_timing_link['to_atco_code'] = raw_journey_pattern_timing_link['To']['StopPointRef']
+                        journey_pattern_timing_link['to_timing_status'] = raw_journey_pattern_timing_link['To']['TimingStatus']
+                        journey_pattern_timing_link['run_time'] = raw_journey_pattern_timing_link['RunTime']
+                        # journey_pattern_timing_link['order'] = raw_journey_pattern_timing_link[order]
+                        journey_pattern_timing_links.append(journey_pattern_timing_link)
+                    journey_pattern_sections.append(journey_pattern_timing_links)
+        journey_patterns.append(journey_pattern_sections)
+    return journey_patterns
+
+
+def iterate_through_journey_patterns_and_run_insert_queries(cursor, data_dict, operator_service_id):
+    journey_patterns = collect_journey_patterns(data_dict)
+    for journey_pattern in journey_patterns:
+        for journey_pattern_section in journey_pattern:
+            journey_pattern_section_id = insert_into_tnds_journey_pattern_section_table(cursor, operator_service_id)
+            for journey_pattern_timing_link in journey_pattern_section:
+                insert_into_tnds_journey_pattern_link_table(cursor, journey_pattern_timing_link, journey_pattern_section_id)
+
+
+def insert_into_tnds_journey_pattern_section_table(cursor, operator_service_id):
     query = 'INSERT INTO tndsJourneyPatternSection (operatorServiceId) VALUES (%s)', (
         operator_service_id)
 
@@ -82,15 +130,18 @@ def insert_into_tnds_journey_pattern_section_table(cursor, data_dict, operator_s
     return journey_pattern_section_id
 
 
-def insert_into_tnds_journey_pattern_link_table(cursor, data_dict, journey_pattern_section_id):
-    fromAtcoCode = ''
-    fromTimingStatus = ''
-    toAtcoCode = ''
-    toTimingStatus = ''
-    runtime = ''
+def insert_into_tnds_journey_pattern_link_table(cursor, journey_pattern_timing_link, journey_pattern_section_id):
+    from_atco_code = journey_pattern_timing_link['From']['StopPointRef']
+    from_timing_status = journey_pattern_timing_link['From']['TimingStatus']
+    to_atco_code = journey_pattern_timing_link['To']['StopPointRef']
+    to_timing_status = journey_pattern_timing_link['To']['TimingStatus']
+    run_time = journey_pattern_timing_link['RunTime']
+
+    # WHAT IS ORDER??
     order = ''
+
     query = 'INSERT INTO tndsJourneyPatternLink (journeyPatternSectionId, fromAtcoCode, fromTimingStatus, toAtcoCode, toTimingStatus, runtime, order) VALUES (%s, %s, )', (
-        journey_pattern_section_id, fromAtcoCode, fromTimingStatus, toAtcoCode, toTimingStatus, runtime, order)
+        journey_pattern_section_id, from_atco_code, from_timing_status, to_atco_code, to_timing_status, run_time, order)
 
     try:
         cursor.execute(query)
@@ -111,10 +162,7 @@ def write_to_database(data_dict):
         with connection.cursor() as cursor:
             operator_service_id = insert_into_tnds_operator_service_table(
                 cursor, data_dict)
-            journey_pattern_section_id = insert_into_tnds_journey_pattern_section_table(
-                cursor, data_dict, operator_service_id)
-            insert_into_tnds_journey_pattern_link_table(
-                cursor, data_dict, journey_pattern_section_id)
+            iterate_through_journey_patterns_and_run_insert_queries(cursor, data_dict, operator_service_id)
             connection.commit()
 
     except Exception as e:
@@ -133,7 +181,7 @@ def handler(event, context):
                        ['object']['key'], encoding='utf-8')
 
     file_dir = '/tmp/' + key.split('/')[-1]
-    
+
     xmltodict_namespaces = {'http://www.transxchange.org.uk/': None}
     table_names = ['tndsService', 'tndsOperatorService',
                    'tndsJourneyPatternSection', 'tndsJourneyPatternLink']
