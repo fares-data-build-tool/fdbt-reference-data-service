@@ -10,7 +10,8 @@ provider:
   memorySize: 256
   vpc:
     securityGroupIds:
-      - Fn::ImportValue: "${self:provider.stage}:RefDataUploaderLambdaSG"
+      - sg-078e4664ee69d99e5
+      #- Fn::ImportValue: "${self:provider.stage}:RefDataUploaderLambdaSG"
     subnetIds:
       - Fn::ImportValue: "${self:provider.stage}:PrivateSubnetA"
       - Fn::ImportValue: "${self:provider.stage}:PrivateSubnetB"
@@ -43,7 +44,7 @@ plugins:
 
 custom:
     pythonRequirements:
-        dockerizePip: false
+        dockerizePip: true
 
 functions:
   CsvUploader:
