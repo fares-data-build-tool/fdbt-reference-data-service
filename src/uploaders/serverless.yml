@@ -6,17 +6,17 @@ provider:
   region: eu-west-2
   stage: ${opt:stage, 'test'}
   stackName: ${self:service}-${self:provider.stage}
-  timeout: 10
+  timeout: 30
   memorySize: 256
   vpc:
     securityGroupIds:
-      - sg-078e4664ee69d99e5
-      #- Fn::ImportValue: "${self:provider.stage}:RefDataUploaderLambdaSG"
+      - Fn::ImportValue: "${self:provider.stage}:RefDataUploaderLambdaSG"
     subnetIds:
       - Fn::ImportValue: "${self:provider.stage}:PrivateSubnetA"
       - Fn::ImportValue: "${self:provider.stage}:PrivateSubnetB"
   environment:
-    RDS_HOST: "${self:provider.stage}:RdsHostName"
+    RDS_HOST: 
+      Fn::ImportValue: "${self:provider.stage}:RdsHostName"
   iamRoleStatements:
     - Effect: "Allow"
       Action:
@@ -27,8 +27,8 @@ provider:
         - "s3:GetObject"
         - "s3:ListBucket"
       Resource:
-        - !Sub arn:aws:s3:::fdbt-csv-reference-data-${self:provider.stage}/*
-        - !Sub arn:aws:s3:::fdbt-xml-reference-data-${self:provider.stage}/*
+        - arn:aws:s3:::fdbt-csv-reference-data-${self:provider.stage}/*
+        - arn:aws:s3:::fdbt-xml-reference-data-${self:provider.stage}/*
 
 custom:
     pythonRequirements:
