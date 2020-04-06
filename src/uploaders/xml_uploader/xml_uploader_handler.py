@@ -35,7 +35,7 @@ def connect_to_database():
     return connection
 
 
-def insert_into_tnds_operator_service_table(cursor, data_dict):
+def extract_data_for_tnds_operator_service_table(data_dict):
     operators = data_dict['TransXChange']['Operators']['Operator']
     services = data_dict['TransXChange']['Services']['Service']
     noc_code = operators['NationalOperatorCode']
@@ -44,6 +44,10 @@ def insert_into_tnds_operator_service_table(cursor, data_dict):
     operator_short_name = operators['OperatorShortName']
     service_description = services['Description']
 
+    return (noc_code, line_name, start_date, operator_short_name, service_description)
+
+def insert_into_tnds_operator_service_table(cursor, data_dict):
+    (noc_code, line_name, start_date, operator_short_name, service_description) = extract_data_for_tnds_operator_service_table(data_dict)
     query = "INSERT INTO tndsOperatorService (nocCode, lineName, startDate, operatorShortName, serviceDescription) VALUES (%s, %s, %s, %s, %s)"
 
     logger.info("Writing to tndsOperatorService table...")
@@ -113,12 +117,11 @@ def iterate_through_journey_patterns_and_run_insert_queries(cursor, data_dict, o
         for journey_pattern_section in journey_pattern:
             journey_pattern_section_id = insert_into_tnds_journey_pattern_section_table(
                 cursor, operator_service_id)
-            print(journey_pattern_section)
-            count = 1
+            order_in_sequence = 1
             for journey_pattern_timing_link in journey_pattern_section:
                 insert_into_tnds_journey_pattern_link_table(
-                    cursor, journey_pattern_timing_link, journey_pattern_section_id, count)
-                count += 1
+                    cursor, journey_pattern_timing_link, journey_pattern_section_id, order_in_sequence)
+                order_in_sequence += 1
 
 
 def insert_into_tnds_journey_pattern_section_table(cursor, operator_service_id):
@@ -133,14 +136,13 @@ def insert_into_tnds_journey_pattern_section_table(cursor, operator_service_id):
     return journey_pattern_section_id
 
 
-def insert_into_tnds_journey_pattern_link_table(cursor, journey_pattern_timing_link, journey_pattern_section_id, count):
+def insert_into_tnds_journey_pattern_link_table(cursor, journey_pattern_timing_link, journey_pattern_section_id, order_in_sequence):
     from_atco_code = journey_pattern_timing_link['from_atco_code']
     from_timing_status = journey_pattern_timing_link['from_timing_status']
     to_atco_code = journey_pattern_timing_link['to_atco_code']
     to_timing_status = journey_pattern_timing_link['to_timing_status']
     run_time = journey_pattern_timing_link['run_time']
-    order_in_sequence = count
-
+    
     query = "INSERT INTO tndsJourneyPatternLink (journeyPatternSectionId, fromAtcoCode, fromTimingStatus, toAtcoCode, toTimingStatus, runtime, orderInSequence) VALUES (%s, %s, %s, %s, %s, %s, %s)"
 
     logger.info("Writing to tndsJourneyPatternLink table...")

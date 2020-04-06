@@ -1,6 +1,7 @@
 import pytest
 
-from db_queries import *
+from src.uploaders.csv_uploader.db_queries import public_name_query, noc_table_query, noc_lines_query, stops_query, service_report_query
+
 
 class TestClass:
     def test_public_name_bucket_insertion(self):
@@ -27,4 +28,3 @@ class TestClass:
         bucket = 'unit-test-bucket'
         result = service_report_query(bucket)
         assert result[2].__contains__(bucket)
-       

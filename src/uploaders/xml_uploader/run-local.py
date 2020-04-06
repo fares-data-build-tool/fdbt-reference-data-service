@@ -2,7 +2,7 @@ import xmltodict
 import json
 import xml.etree.ElementTree as ET
 
-filepath = '/Users/dannydavies/Documents/tfn/REAL_REF_DATA/TNDS/NW/NW_01_ANW_4_1.xml'
+filepath = '/Users/dannydavies/Documents/tfn/fares-data-build-tool/fdbt-reference-data-service/src/uploaders/tests/helpers/test_data/mock_tnds.xml'
 
 # def get_journey_pattern_timing_link(raw)
 
@@ -34,7 +34,6 @@ def get_xml_as_json(filepath):
                     selected_raw_journey_pattern_section = raw_journey_pattern_section
                 if len(selected_raw_journey_pattern_section) > 0:
                     raw_journey_pattern_timing_links = selected_raw_journey_pattern_section['JourneyPatternTimingLink']
-                    print(json.dumps(raw_journey_pattern_timing_links, indent=4))
                     if not isinstance(raw_journey_pattern_timing_links, list):
                         raw_journey_pattern_timing_links = [raw_journey_pattern_timing_links]
                     journey_pattern_timing_links = []
@@ -49,6 +48,7 @@ def get_xml_as_json(filepath):
                         journey_pattern_timing_links.append(journey_pattern_timing_link)
                     journey_pattern_sections.append(journey_pattern_timing_links)
         journey_patterns.append(journey_pattern_sections)
+    print(json.dumps(journey_patterns, indent=4))
     # print(json.dumps(journey_patterns, indent=4))
 
     # print(json.dumps(journey_patterns, indent=4))
