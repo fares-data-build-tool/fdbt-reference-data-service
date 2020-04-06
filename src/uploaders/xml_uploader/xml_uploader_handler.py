@@ -17,31 +17,22 @@ ssm = boto3.client('ssm')
 
 def connect_to_database():
     rds_host = os.getenv('RDS_HOST')
-    print(rds_host)
     db_name = 'fdbt'
-    print(db_name)
     username = ssm.get_parameter(
         Name='fdbt-rds-reference-data-username',
         WithDecryption=True
     )['Parameter']['Value']
-    print(username)
     password = ssm.get_parameter(
         Name='fdbt-rds-reference-data-password',
         WithDecryption=True
     )['Parameter']['Value']
-    print(password)
-    try:
-        connection = pymysql.connect(
-            rds_host, user=username, passwd=password, db=db_name, connect_timeout=5)
-        return connection
-    except Exception as e:
-        logger.error(
-            "ERROR! Unexpected error. Could not connect to MySQL instance")
-        logger.error(e)
-        sys.exit()
-        raise e
+
+    logger.info("Connection to RDS MySQL instance...")
+    connection = pymysql.connect(
+        rds_host, user=username, passwd=password, db=db_name, connect_timeout=5)
 
     logger.info("SUCCESS! Connection to RDS MySQL instance succeeded")
+    return connection
 
 
 def insert_into_tnds_operator_service_table(cursor, data_dict):
@@ -55,29 +46,23 @@ def insert_into_tnds_operator_service_table(cursor, data_dict):
 
     query = "INSERT INTO tndsOperatorService (nocCode, lineName, startDate, operatorShortName, serviceDescription) VALUES (%s, %s, %s, %s, %s)"
 
-    try:
-        print("Writing to tndsOperatorService table...")
-        cursor.execute(query, (noc_code, line_name, start_date,
-                               operator_short_name, service_description))
-        operator_service_id = cursor.lastrowid
-        print("Write complete! Id is: ", operator_service_id)
-    except Exception as e:
-        logger.error(
-            "ERROR! Unexpected error. Could not execute query on tndsOperatorService table")
-        logger.error(e)
-        raise e
+    logger.info("Writing to tndsOperatorService table...")
+    cursor.execute(query, (noc_code, line_name, start_date,
+                           operator_short_name, service_description))
+    operator_service_id = cursor.lastrowid
 
     logger.info(
-        "SUCCESS! Data successfully inserted into tndsOperatorService table")
+        "SUCCESS! Data successfully inserted into tndsOperatorService table. Id for insert is {}".format(operator_service_id))
     return operator_service_id
 
 
 def collect_journey_pattern_section_refs(raw_journey_patterns):
+    logger.info("Collecting JourneyPatternSectionRefs...")
     journey_pattern_section_refs = []
     for raw_journey_pattern in raw_journey_patterns:
         raw_journey_pattern_section_refs = raw_journey_pattern['JourneyPatternSectionRefs']
         journey_pattern_section_refs.append(raw_journey_pattern_section_refs)
-    print("journey_pattern_section_refs", journey_pattern_section_refs)
+    logger.info("Collected JourneyPatternSectionRefs for {} JourneyPatterns provided in the TNDS file".format(len(journey_pattern_section_refs)))
     return journey_pattern_section_refs
 
 
@@ -89,6 +74,7 @@ def collect_journey_patterns(data_dict):
     journey_pattern_section_refs = collect_journey_pattern_section_refs(
         raw_journey_patterns)
 
+    logger.info("Collecting JourneyPatterns...")
     journey_patterns = []
     for journey_pattern in journey_pattern_section_refs:
         journey_pattern_sections = []
@@ -111,12 +97,13 @@ def collect_journey_patterns(data_dict):
                         journey_pattern_timing_link['to_atco_code'] = raw_journey_pattern_timing_link['To']['StopPointRef']
                         journey_pattern_timing_link['to_timing_status'] = raw_journey_pattern_timing_link['To']['TimingStatus']
                         journey_pattern_timing_link['run_time'] = raw_journey_pattern_timing_link['RunTime']
-                        # journey_pattern_timing_link['order'] = raw_journey_pattern_timing_link[order]
                         journey_pattern_timing_links.append(
                             journey_pattern_timing_link)
                     journey_pattern_sections.append(
                         journey_pattern_timing_links)
         journey_patterns.append(journey_pattern_sections)
+
+    logger.info("Collected and formatted JourneyPatternTimingLinks for {} JourneyPatterns".format(len(journey_patterns)))
     return journey_patterns
 
 
@@ -131,30 +118,22 @@ def iterate_through_journey_patterns_and_run_insert_queries(cursor, data_dict, o
             for journey_pattern_timing_link in journey_pattern_section:
                 insert_into_tnds_journey_pattern_link_table(
                     cursor, journey_pattern_timing_link, journey_pattern_section_id, count)
-                count +=1
+                count += 1
 
 
 def insert_into_tnds_journey_pattern_section_table(cursor, operator_service_id):
     query = "INSERT INTO tndsJourneyPatternSection (operatorServiceId) VALUES (%s)"
 
-    try:
-        print("Writing to tndsJourneyPatternSection table...")
-        cursor.execute(query, (operator_service_id))
-        journey_pattern_section_id = cursor.lastrowid
-        print("Write complete! Id is: ", journey_pattern_section_id)
-    except Exception as e:
-        logger.error(
-            "ERROR! Unexpected error. Could not execute query on tndsJourneyPatternSection table")
-        logger.error(e)
-        raise e
+    logger.info("Writing to tndsJourneyPatternSection table...")
+    cursor.execute(query, (operator_service_id))
+    journey_pattern_section_id = cursor.lastrowid
 
     logger.info(
-        "SUCCESS! Data successfully inserted into tndsJourneyPatternSection table")
+        "SUCCESS! Data successfully inserted into tndsJourneyPatternSection table. Id for insert is {}".format(journey_pattern_section_id))
     return journey_pattern_section_id
 
 
 def insert_into_tnds_journey_pattern_link_table(cursor, journey_pattern_timing_link, journey_pattern_section_id, count):
-    print(journey_pattern_timing_link)
     from_atco_code = journey_pattern_timing_link['from_atco_code']
     from_timing_status = journey_pattern_timing_link['from_timing_status']
     to_atco_code = journey_pattern_timing_link['to_atco_code']
@@ -164,17 +143,12 @@ def insert_into_tnds_journey_pattern_link_table(cursor, journey_pattern_timing_l
 
     query = "INSERT INTO tndsJourneyPatternLink (journeyPatternSectionId, fromAtcoCode, fromTimingStatus, toAtcoCode, toTimingStatus, runtime, orderInSequence) VALUES (%s, %s, %s, %s, %s, %s, %s)"
 
-    try:
-        print("Writing to tndsJourneyPatternLink table...")
-        cursor.execute(query, (journey_pattern_section_id, from_atco_code,
-                               from_timing_status, to_atco_code, to_timing_status, run_time, order_in_sequence))
-        logger.info(
-            "SUCCESS! Data successfully inserted into tndsJourneyPatternLink table")
-    except Exception as e:
-        logger.error(
-            "ERROR! Unexpected error. Could not execute query on tndsJourneyPatternLink table")
-        logger.error(e)
-        raise e
+    logger.info("Writing to tndsJourneyPatternLink table...")
+    cursor.execute(query, (journey_pattern_section_id, from_atco_code,
+                            from_timing_status, to_atco_code, to_timing_status, run_time, order_in_sequence))
+                            
+    logger.info(
+        "SUCCESS! Data successfully inserted into tndsJourneyPatternLink table")
 
 
 def write_to_database(data_dict):
@@ -201,9 +175,6 @@ def handler(event, context):
     bucket = event['Records'][0]['s3']['bucket']['name']
     key = unquote_plus(event['Records'][0]['s3']
                        ['object']['key'], encoding='utf-8')
-
-    print('Bucket is: ', bucket)
-    print('Key is: ', key)
 
     file_dir = '/tmp/' + key.split('/')[-1]
 
