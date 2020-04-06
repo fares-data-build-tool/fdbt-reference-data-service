@@ -15,7 +15,7 @@ provider:
       - Fn::ImportValue: "${self:provider.stage}:PrivateSubnetA"
       - Fn::ImportValue: "${self:provider.stage}:PrivateSubnetB"
   environment:
-    RDS_HOST: 
+    RDS_HOST:
       Fn::ImportValue: "${self:provider.stage}:RdsHostName"
   iamRoleStatements:
     - Effect: "Allow"
@@ -31,8 +31,8 @@ provider:
         - arn:aws:s3:::fdbt-xml-reference-data-${self:provider.stage}/*
 
 custom:
-    pythonRequirements:
-        dockerizePip: non-linux
+  pythonRequirements:
+    dockerizePip: false
 
 plugins:
   - serverless-python-requirements

@@ -14,7 +14,7 @@ jobs:
 
   audit-reference-data-uploaders:
     docker:
-    - image: circleci/node:12
+      - image: circleci/node:12
     working_directory: ~/project
     steps:
       - attach_workspace:
@@ -23,18 +23,6 @@ jobs:
           command: |
             cd src/uploaders
             npx audit-ci --moderate
-
-  test-reference-data-uploaders:
-    docker:
-      - image: circleci/python:3.8
-    working_directory: ~/project
-    steps:
-      - attach_workspace:
-          at: ~/project
-      - run:
-          command: |
-            cd src/uploaders
-            pytest -v
 
   deploy-reference-data-uploaders-to-test:
     docker:
@@ -71,18 +59,6 @@ jobs:
             npm install
             export SLS_DEBUG="*" && sls deploy --stage=preprod
             echo "Finished deploy"
-
-  audit-reference-data-retrievers:
-    docker:
-      - image: circleci/node:12
-    working_directory: ~/project
-    steps:
-      - attach_workspace:
-          at: ~/project
-      - run:
-          command: |
-            cd src/retrievers
-            npx audit-ci --moderate
 
   deploy-reference-data-retrievers-to-test:
     docker:
@@ -124,21 +100,7 @@ workflows:
   version: 2
   audit-and-deploy-reference-data-lambdas:
     jobs:
-      - checkout-repo:
-          filters:
-            branches:
-              only:
-                - develop
-                - master
-
-      - audit-reference-data-retrievers:
-          requires:
-            - checkout-repo
-          filters:
-            branches:
-              only:
-                - develop
-                - master
+      - checkout-repo
 
       - deploy-reference-data-retrievers-to-test:
           requires:
@@ -167,24 +129,10 @@ workflows:
       - audit-reference-data-uploaders:
           requires:
             - checkout-repo
-          filters:
-            branches:
-              only:
-                - develop
-                - master
-
-      - test-reference-data-uploaders:
-          requires:
-            - audit-reference-data-uploaders
-          filters:
-            branches:
-              only:
-                - develop
-                - master
 
       - deploy-reference-data-uploaders-to-test:
           requires:
-            - test-reference-data-uploaders
+            - audit-reference-data-uploaders
           context: tfn-fdbt-test
           filters:
             branches:
@@ -193,7 +141,7 @@ workflows:
       - hold-reference-data-uploaders-preprod-deployment:
           type: approval
           requires:
-            - test-reference-data-uploaders
+            - audit-reference-data-uploaders
           filters:
             branches:
               only: master
