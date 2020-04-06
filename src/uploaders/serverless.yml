@@ -2,60 +2,75 @@ service: reference-data-service-uploaders
 
 provider:
   name: aws
-  runtime: python3.7
+  runtime: python3.8
   region: eu-west-2
   stage: ${opt:stage, 'test'}
   timeout: 10
   memorySize: 256
   vpc:
     securityGroupIds:
-      - sg-078e4664ee69d99e5
-      # - Fn::ImportValue: "test:RefDataUploaderLambdaSG"
+      - sg-089d8c700d00685fd
+      # - Fn::ImportValue: 'test:RefDataUploaderLambdaSG'
     subnetIds:
-      - Fn::ImportValue: "test:PrivateSubnetA"
-      - Fn::ImportValue: "test:PrivateSubnetB"
+      - Fn::ImportValue: 'test:PrivateSubnetA'
+      - Fn::ImportValue: 'test:PrivateSubnetB'
   environment:
-    RDS_HOST: "test:RdsHostName"
+    RDS_HOST: 
+      Fn::ImportValue: 'test:RdsHostName'
   iamRoleStatements:
-    - Effect: "Allow"
+    - Effect: 'Allow'
       Action:
-        - "ssm:GetParameter"
-      Resource: "*"
-    - Effect: "Allow"
+        - 'ssm:GetParameter'
+      Resource: '*'
+    - Effect: 'Allow'
       Action:
-        - "s3:GetObject"
-        - "s3:ListBucket"
+        - 's3:GetObject'
+        - 's3:ListBucket'
       Resource:
         - Fn::Join:
-            - ""
-            - - "arn:aws:s3:::"
+            - ''
+            - - 'arn:aws:s3:::'
               - fdbt-csv-reference-data-${self:provider.stage}
         - Fn::Join:
-            - ""
-            - - "arn:aws:s3:::"
+            - ''
+            - - 'arn:aws:s3:::'
+              - fdbt-csv-reference-data-${self:provider.stage}
+              - '/*'
+        - Fn::Join:
+            - ''
+            - - 'arn:aws:s3:::'
               - fdbt-xml-reference-data-${self:provider.stage}
+        - Fn::Join:
+            - ''
+            - - 'arn:aws:s3:::'
+              - fdbt-xml-reference-data-${self:provider.stage}
+              - '/*'
+
+custom:
+    pythonRequirements:
+        dockerizePip: non-linux
 
 plugins:
   - serverless-python-requirements
 
 functions:
   CsvUploader:
-    handler: csv-uploader/handler
+    handler: csv_uploader/csv_uploader_handler.handler
+    module: csv_uploader
     events:
-      - s3:
-        bucket: fdbt-csv-reference-data-${self:provider.stage}
+      - s3: fdbt-csv-reference-data-${self:provider.stage}
         event: s3:ObjectCreated:*
 
   XmlUploader:
-    handler: xml-uploader/handler
+    handler: xml_uploader/xml_uploader_handler.handler
+    module: xml_uploader
     events:
-      - s3:
-        bucket: fdbt-xml-reference-data-${self:provider.stage}
+      - s3: fdbt-xml-reference-data-${self:provider.stage}
         event: s3:ObjectCreated:*
 
 package:
-  exclude:
-    - node_modules/**
   include:
     - ./csv-uploader/*
     - ./xml-uploader/*
+  exclude:
+    - ./node_modules/**
