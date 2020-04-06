@@ -29,41 +29,30 @@ provider:
       Resource:
         - !Sub arn:aws:s3:::fdbt-csv-reference-data-${self:provider.stage}/*
         - !Sub arn:aws:s3:::fdbt-xml-reference-data-${self:provider.stage}/*
-    - Effect: "Allow"
-      Action:
-        - ec2:CreateNetworkInterface
-        - ec2:DescribeNetworkInterfaces
-        - ec2:DeleteNetworkInterface
-        - ec2:DescribeSecurityGroups
-        - ec2:DescribeSubnets
-        - ec2:DescribeVpcs
-      Resource: "*"
+
+custom:
+    pythonRequirements:
+        dockerizePip: non-linux
 
 plugins:
   - serverless-python-requirements
 
-custom:
-    pythonRequirements:
-        dockerizePip: true
-
 functions:
   CsvUploader:
-    handler: handlers/csv-uploader/handler
+    handler: csv-uploader/handler.lambda_handler
     events:
-      - s3:
-        bucket: fdbt-csv-reference-data-${self:provider.stage}
+      - s3: fdbt-csv-reference-data-${self:provider.stage}
         event: s3:ObjectCreated:*
 
   XmlUploader:
-    handler: handlers/xml-uploader/handler
+    handler: xml-uploader/handler.xml_uploader_handler
     events:
-      - s3:
-        bucket: fdbt-xml-reference-data-${self:provider.stage}
+      - s3: fdbt-xml-reference-data-${self:provider.stage}
         event: s3:ObjectCreated:*
 
 package:
-  exclude:
-    - node_modules/**
   include:
     - ./csv-uploader/*
     - ./xml-uploader/*
+  exclude:
+    - node_modules/**
