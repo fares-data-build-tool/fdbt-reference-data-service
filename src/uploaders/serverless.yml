@@ -27,24 +27,8 @@ provider:
         - 's3:GetObject'
         - 's3:ListBucket'
       Resource:
-        - Fn::Join:
-            - ''
-            - - 'arn:aws:s3:::'
-              - fdbt-csv-reference-data-${self:provider.stage}
-        - Fn::Join:
-            - ''
-            - - 'arn:aws:s3:::'
-              - fdbt-csv-reference-data-${self:provider.stage}
-              - '/*'
-        - Fn::Join:
-            - ''
-            - - 'arn:aws:s3:::'
-              - fdbt-xml-reference-data-${self:provider.stage}
-        - Fn::Join:
-            - ''
-            - - 'arn:aws:s3:::'
-              - fdbt-xml-reference-data-${self:provider.stage}
-              - '/*'
+        - !Sub arn:aws:s3:::fdbt-csv-reference-data-${self:provider.stage}/*
+        - !Sub arn:aws:s3:::fdbt-xml-reference-data-${self:provider.stage}/*
 
 custom:
     pythonRequirements:
