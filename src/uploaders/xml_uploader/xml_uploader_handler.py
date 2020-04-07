@@ -11,18 +11,14 @@ from urllib.parse import unquote_plus
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
-s3 = boto3.client('s3')
-ssm = boto3.client('ssm')
-
-
-def connect_to_database():
+def connect_to_database(ssm_client):
     rds_host = os.getenv('RDS_HOST')
     db_name = 'fdbt'
-    username = ssm.get_parameter(
+    username = ssm_client.get_parameter(
         Name='fdbt-rds-reference-data-username',
         WithDecryption=True
     )['Parameter']['Value']
-    password = ssm.get_parameter(
+    password = ssm_client.get_parameter(
         Name='fdbt-rds-reference-data-password',
         WithDecryption=True
     )['Parameter']['Value']
@@ -81,6 +77,8 @@ def collect_journey_patterns(data_dict):
     logger.info("Collecting JourneyPatterns...")
     journey_patterns = []
     for journey_pattern in journey_pattern_section_refs:
+        if not isinstance(journey_pattern, list):
+            journey_pattern = [journey_pattern]
         journey_pattern_sections = []
         for journey_pattern_section_ref in journey_pattern:
             for raw_journey_pattern_section in raw_journey_pattern_sections:
@@ -153,9 +151,9 @@ def insert_into_tnds_journey_pattern_link_table(cursor, journey_pattern_timing_l
         "SUCCESS! Data successfully inserted into tndsJourneyPatternLink table")
 
 
-def write_to_database(data_dict):
+def write_to_database(data_dict, ssm_client):
     try:
-        connection = connect_to_database()
+        connection = connect_to_database(ssm_client)
         with connection.cursor() as cursor:
             operator_service_id = insert_into_tnds_operator_service_table(
                 cursor, data_dict)
@@ -173,30 +171,34 @@ def write_to_database(data_dict):
         connection.close()
 
 
+def download_from_s3_and_write_to_db(s3_client, ssm_client, bucket, key):
+    file_dir = '/tmp/' + key.split('/')[-1]
+    xmltodict_namespaces = {'http://www.transxchange.org.uk/': None}
+
+    s3_client.download_file(bucket, key, file_dir)
+    logger.info("Downloaded S3 file, '{}' to '{}'".format(key, file_dir))
+    tree = ET.parse(file_dir)
+    xml_data = tree.getroot()
+    xml_string = ET.tostring(xml_data, encoding='utf-8', method='xml')
+    data_dict = xmltodict.parse(
+        xml_string, process_namespaces=True, namespaces=xmltodict_namespaces)
+
+    logger.info("Starting write to database...")
+    write_to_database(data_dict, ssm_client)
+    logger.info(
+        "SUCCESS! Succesfully wrote contents of '{}' from '{}' bucket to database.".format(key, bucket))
+
+
 def handler(event, context):
     bucket = event['Records'][0]['s3']['bucket']['name']
     key = unquote_plus(event['Records'][0]['s3']
                        ['object']['key'], encoding='utf-8')
 
-    file_dir = '/tmp/' + key.split('/')[-1]
-
-    xmltodict_namespaces = {'http://www.transxchange.org.uk/': None}
-    table_names = ['tndsService', 'tndsOperatorService',
-                   'tndsJourneyPatternSection', 'tndsJourneyPatternLink']
+    s3_client = boto3.client('s3')
+    ssm_client = boto3.client('ssm')
 
     try:
-        s3.download_file(bucket, key, file_dir)
-        logger.info("Downloaded S3 file, '{}' to '{}'".format(key, file_dir))
-        tree = ET.parse(file_dir)
-        xml_data = tree.getroot()
-        xml_string = ET.tostring(xml_data, encoding='utf-8', method='xml')
-        data_dict = xmltodict.parse(
-            xml_string, process_namespaces=True, namespaces=xmltodict_namespaces)
-
-        logger.info("Starting write to database...")
-        write_to_database(data_dict)
-        logger.info(
-            "SUCCESS! Succesfully wrote contents of '{}' from '{}' bucket to database.".format(key, bucket))
+        download_from_s3_and_write_to_db(s3_client, ssm_client, bucket, key)
 
     except Exception as e:
         logger.error(e)

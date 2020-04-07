@@ -26,6 +26,8 @@ def get_xml_as_json(filepath):
 
     journey_patterns = []
     for journey_pattern in journey_pattern_section_refs:
+        if not isinstance(journey_pattern, list):
+            journey_pattern = [journey_pattern]
         journey_pattern_sections = []
         for journey_pattern_section_ref in journey_pattern:
             for raw_journey_pattern_section in raw_journey_pattern_sections:
@@ -48,8 +50,7 @@ def get_xml_as_json(filepath):
                         journey_pattern_timing_links.append(journey_pattern_timing_link)
                     journey_pattern_sections.append(journey_pattern_timing_links)
         journey_patterns.append(journey_pattern_sections)
-    print(json.dumps(journey_patterns, indent=4))
-    # print(json.dumps(journey_patterns, indent=4))
+    print(journey_patterns)
 
     # print(json.dumps(journey_patterns, indent=4))
     # print(journey_pattern_sections)

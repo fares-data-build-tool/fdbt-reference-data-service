@@ -1,0 +1,4 @@
+boto3==1.12.31
+pymysql==0.9.3
+urllib3==1.25.8
+xmltodict==0.12.0

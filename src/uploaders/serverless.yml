@@ -9,8 +9,7 @@ provider:
   memorySize: 256
   vpc:
     securityGroupIds:
-      - sg-089d8c700d00685fd
-      # - Fn::ImportValue: 'test:RefDataUploaderLambdaSG'
+      - Fn::ImportValue: 'test:RefDataUploaderLambdaSG'
     subnetIds:
       - Fn::ImportValue: 'test:PrivateSubnetA'
       - Fn::ImportValue: 'test:PrivateSubnetB'
@@ -32,7 +31,7 @@ provider:
 
 custom:
     pythonRequirements:
-        dockerizePip: non-linux
+        dockerizePip: true
 
 plugins:
   - serverless-python-requirements
