@@ -1,6 +1,6 @@
 import pytest
 
-from src.uploaders.csv_uploader.db_queries import public_name_query, noc_table_query, noc_lines_query, stops_query, service_report_query
+from csv_uploader.db_queries import *
 
 
 class TestClass:

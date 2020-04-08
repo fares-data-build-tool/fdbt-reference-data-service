@@ -51,6 +51,7 @@ class TestMainFunctionality():
         mock_bucket = 'test-bucket'
         mock_key = 'test-key'
         conn = boto3.resource('s3', region_name='eu-west-2')
+        # pylint: disable=no-member
         conn.create_bucket(Bucket=mock_bucket)
         s3.put_object(Bucket=mock_bucket, Key=mock_key,
                       Body=open(mock_file_dir, 'rb'))

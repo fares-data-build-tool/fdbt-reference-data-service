@@ -7,7 +7,7 @@ import uuid
 import sys
 import logging
 import pymysql
-from db_queries import *
+from csv_uploader.db_queries import *
 
 s3 = boto3.resource('s3')
 ssm = boto3.client('ssm')
