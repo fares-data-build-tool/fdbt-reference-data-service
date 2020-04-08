@@ -155,6 +155,7 @@ def write_to_database(data_dict, ssm_client):
     try:
         connection = connect_to_database(ssm_client)
         with connection.cursor() as cursor:
+            connection.begin()
             operator_service_id = insert_into_tnds_operator_service_table(
                 cursor, data_dict)
             iterate_through_journey_patterns_and_run_insert_queries(
@@ -171,8 +172,7 @@ def write_to_database(data_dict, ssm_client):
         connection.close()
 
 
-def download_from_s3_and_write_to_db(s3_client, ssm_client, bucket, key):
-    file_dir = '/tmp/' + key.split('/')[-1]
+def download_from_s3_and_write_to_db(s3_client, ssm_client, bucket, key, file_dir):
     xmltodict_namespaces = {'http://www.transxchange.org.uk/': None}
 
     s3_client.download_file(bucket, key, file_dir)
@@ -193,12 +193,13 @@ def handler(event, context):
     bucket = event['Records'][0]['s3']['bucket']['name']
     key = unquote_plus(event['Records'][0]['s3']
                        ['object']['key'], encoding='utf-8')
+    file_dir = '/tmp/' + key.split('/')[-1]
 
     s3_client = boto3.client('s3')
     ssm_client = boto3.client('ssm')
 
     try:
-        download_from_s3_and_write_to_db(s3_client, ssm_client, bucket, key)
+        download_from_s3_and_write_to_db(s3_client, ssm_client, bucket, key, file_dir)
 
     except Exception as e:
         logger.error(e)
