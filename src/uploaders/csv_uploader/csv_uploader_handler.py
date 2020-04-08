@@ -16,11 +16,10 @@ logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
 
-def csv_uploader_handler(event, context):
+def handler(event, context):
     try:
 
         bucket = event['Records'][0]['s3']['bucket']['name']
-        # unsure if unquote is needed
         key = unquote_plus(event['Records'][0]['s3']['object']['key'])
 
         insert_in_database(key, bucket)
@@ -36,13 +35,14 @@ def insert_in_database(key, bucket):
     username = ssm.get_parameter(
         Name='fdbt-rds-reference-data-username',
         WithDecryption=True
-    )
+    )['Parameter']['Value']
     password = ssm.get_parameter(
         Name='fdbt-rds-reference-data-password',
         WithDecryption=True
-    )
+    )['Parameter']['Value']
 
     try:
+        logger.info("Connection to RDS MySQL instance...")
         conn = pymysql.connect(rds_host, user=username, passwd=password, db=db_name, connect_timeout=5)
     except pymysql.MySQLError as e:
         logger.error(
