@@ -1,7 +1,7 @@
 import xmltodict
 import xml.etree.ElementTree as eT
 
-def make_list_if_not(item):
+def make_list(item):
     if not isinstance(item, list):
         return [item]
 
@@ -11,18 +11,18 @@ def make_list_if_not(item):
 def get_operators(data_dict):
     operators = data_dict['TransXChange']['Operators']['Operator']
 
-    return make_list_if_not(operators)
+    return make_list(operators)
 
 
 def get_services_for_operator(data_dict, operator):
-    services = make_list_if_not(data_dict['TransXChange']['Services']['Service'])
+    services = make_list(data_dict['TransXChange']['Services']['Service'])
     services_for_operator = [service for service in services if service['RegisteredOperatorRef'] == operator['@id']]
 
     return services_for_operator
 
 
 def get_lines_for_service(service):
-    return make_list_if_not(service['Lines']['Line'])
+    return make_list(service['Lines']['Line'])
 
 
 def extract_data_for_tnds_operator_service_table(operator, service):
@@ -46,7 +46,7 @@ def collect_journey_pattern_section_refs_and_info(raw_journey_patterns):
         raw_journey_pattern_section_refs = raw_journey_pattern['JourneyPatternSectionRefs']
         journey_patterns.append({
             'journey_pattern_info': journey_pattern_info,
-            'journey_pattern_section_refs': make_list_if_not(raw_journey_pattern_section_refs)
+            'journey_pattern_section_refs': make_list(raw_journey_pattern_section_refs)
         })
 
     return journey_patterns
@@ -63,10 +63,9 @@ def process_journey_pattern_sections(journey_pattern_section_refs, raw_journey_p
                 selected_raw_journey_pattern_section = raw_journey_pattern_section
 
             if len(selected_raw_journey_pattern_section) > 0:
-                raw_journey_pattern_timing_links = selected_raw_journey_pattern_section['JourneyPatternTimingLink']
-
-                if not isinstance(raw_journey_pattern_timing_links, list):
-                    raw_journey_pattern_timing_links = [raw_journey_pattern_timing_links]
+                raw_journey_pattern_timing_links = make_list(
+                    selected_raw_journey_pattern_section['JourneyPatternTimingLink']
+                )
 
                 journey_pattern_timing_links = []
 
@@ -87,24 +86,17 @@ def process_journey_pattern_sections(journey_pattern_section_refs, raw_journey_p
 
 
 def collect_journey_patterns(data_dict, service):
-    raw_journey_patterns = service['StandardService']['JourneyPattern']
-    raw_journey_pattern_sections = data_dict['TransXChange']['JourneyPatternSections']['JourneyPatternSection']
-
-    if not isinstance(raw_journey_pattern_sections, list):
-        raw_journey_pattern_sections = [raw_journey_pattern_sections]
-
-    if not isinstance(raw_journey_patterns, list):
-        raw_journey_patterns = [raw_journey_patterns]
+    raw_journey_patterns = make_list(service['StandardService']['JourneyPattern'])
+    raw_journey_pattern_sections = make_list(
+        data_dict['TransXChange']['JourneyPatternSections']['JourneyPatternSection']
+    )
 
     journey_patterns_section_refs_and_info = collect_journey_pattern_section_refs_and_info(raw_journey_patterns)
 
     journey_patterns = []
 
     for journey_pattern in journey_patterns_section_refs_and_info:
-        journey_pattern_section_refs = journey_pattern['journey_pattern_section_refs']
-
-        if not isinstance(journey_pattern_section_refs, list):
-            journey_pattern_section_refs = [journey_pattern_section_refs]
+        journey_pattern_section_refs = make_list(journey_pattern['journey_pattern_section_refs'])
 
         processed_journey_pattern = {
             'journey_pattern_sections': process_journey_pattern_sections(
