@@ -34,6 +34,7 @@ jobs:
       - run:
           command: |
             cd src/uploaders
+            pip install -r requirements.test.txt
             echo "Running tests..."
             python3 -m pytest tests/
 
