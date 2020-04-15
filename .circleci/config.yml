@@ -125,21 +125,11 @@ workflows:
   version: 2
   audit-test-and-deploy-reference-data-lambdas:
     jobs:
-      - checkout-repo:
-          filters:
-            branches:
-              only:
-                - develop
-                - master
+      - checkout-repo
 
       - audit-reference-data-retrievers:
           requires:
             - checkout-repo
-          filters:
-            branches:
-              only:
-                - develop
-                - master
 
       - deploy-reference-data-retrievers-to-test:
           requires:
@@ -168,20 +158,10 @@ workflows:
       - audit-reference-data-uploaders:
           requires:
             - checkout-repo
-          filters:
-            branches:
-              only:
-                - develop
-                - master
 
       - test-reference-data-uploaders:
           requires:
             - audit-reference-data-uploaders
-          filters:
-            branches:
-              only:
-                - develop
-                - master
 
       - deploy-reference-data-uploaders-to-test:
           requires:

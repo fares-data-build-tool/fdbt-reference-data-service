@@ -48,7 +48,7 @@ functions:
   XmlUploader:
     handler: xml_uploader/xml_uploader_handler.handler
     module: xml_uploader
-    timeout: 60
+    timeout: 120
     events:
       - s3: fdbt-xml-reference-data-${self:provider.stage}
         event: s3:ObjectCreated:*
