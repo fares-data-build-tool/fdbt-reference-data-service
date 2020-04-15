@@ -1,5 +1,3 @@
-import pytest
-
 from csv_uploader.db_queries import *
 
 

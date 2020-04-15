@@ -5,41 +5,42 @@ provider:
   runtime: python3.8
   region: eu-west-2
   stage: ${opt:stage, 'test'}
-  timeout: 10
   memorySize: 256
   vpc:
     securityGroupIds:
-      - Fn::ImportValue: 'test:RefDataUploaderLambdaSG'
+      - Fn::ImportValue: ${self:provider.stage}:RefDataUploaderLambdaSG
     subnetIds:
-      - Fn::ImportValue: 'test:PrivateSubnetA'
-      - Fn::ImportValue: 'test:PrivateSubnetB'
+      - Fn::ImportValue: ${self:provider.stage}:PrivateSubnetA
+      - Fn::ImportValue: ${self:provider.stage}:PrivateSubnetB
   environment:
-    RDS_HOST: 
-      Fn::ImportValue: 'test:RdsHostName'
+    RDS_HOST:
+      Fn::ImportValue: ${self:provider.stage}:RdsHostName
   iamRoleStatements:
-    - Effect: 'Allow'
+    - Effect: "Allow"
       Action:
-        - 'ssm:GetParameter'
-      Resource: '*'
-    - Effect: 'Allow'
+        - "ssm:GetParameter"
+      Resource: "*"
+    - Effect: "Allow"
       Action:
-        - 's3:GetObject'
-        - 's3:ListBucket'
+        - "s3:GetObject"
+        - "s3:ListBucket"
       Resource:
-        - !Sub arn:aws:s3:::fdbt-csv-reference-data-${self:provider.stage}/*
-        - !Sub arn:aws:s3:::fdbt-xml-reference-data-${self:provider.stage}/*
-
-custom:
-    pythonRequirements:
-        dockerizePip: true
+        - "arn:aws:s3:::fdbt-csv-reference-data-${self:provider.stage}/*"
+        - "arn:aws:s3:::fdbt-xml-reference-data-${self:provider.stage}/*"
 
 plugins:
   - serverless-python-requirements
+  - serverless-step-functions
+
+custom:
+  pythonRequirements:
+    dockerizePip: false
 
 functions:
   CsvUploader:
     handler: csv_uploader/csv_uploader_handler.handler
     module: csv_uploader
+    timeout: 30
     events:
       - s3: fdbt-csv-reference-data-${self:provider.stage}
         event: s3:ObjectCreated:*
@@ -47,9 +48,11 @@ functions:
   XmlUploader:
     handler: xml_uploader/xml_uploader_handler.handler
     module: xml_uploader
+    timeout: 60
     events:
       - s3: fdbt-xml-reference-data-${self:provider.stage}
         event: s3:ObjectCreated:*
+    reservedConcurrency: 40
 
 package:
   include:
