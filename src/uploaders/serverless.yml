@@ -73,7 +73,6 @@ functions:
       - name: functionErrors
         treatMissingData: notBreaching
       - name: functionInvocations
-        threshold: 5000
         treatMissingData: notBreaching
 
   XmlUploader:
@@ -94,6 +93,7 @@ functions:
       - name: functionErrors
         treatMissingData: notBreaching
       - name: functionInvocations
+        threshold: 5000
         treatMissingData: notBreaching
 
 package:
