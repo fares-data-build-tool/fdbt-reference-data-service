@@ -166,8 +166,6 @@ workflows:
           filters:
             tags:
               only: /^v.*/
-            branches:
-              ignore: /.*/
 
       - audit-reference-data-retrievers:
           requires:
@@ -175,8 +173,6 @@ workflows:
           filters:
             tags:
               only: /^v.*/
-            branches:
-              ignore: /.*/
 
       - deploy-reference-data-retrievers-to-test:
           requires:
@@ -220,8 +216,6 @@ workflows:
           filters:
             tags:
               only: /^v.*/
-            branches:
-              ignore: /.*/
 
       - test-reference-data-uploaders:
           requires:
@@ -229,8 +223,6 @@ workflows:
           filters:
             tags:
               only: /^v.*/
-            branches:
-              ignore: /.*/
 
       - deploy-reference-data-uploaders-to-test:
           requires:
