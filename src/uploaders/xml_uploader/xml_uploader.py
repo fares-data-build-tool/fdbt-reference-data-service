@@ -180,7 +180,7 @@ def insert_into_tnds_operator_service_table(cursor, operator, service, line):
         service_code
     ) = extract_data_for_tnds_operator_service_table(operator, service)
 
-    query = """INSERT INTO tndsOperatorService (nocCode, lineName, startDate, operatorShortName, serviceDescription, service_code) 
+    query = """INSERT INTO tndsOperatorService (nocCode, lineName, startDate, operatorShortName, serviceDescription, serviceCode) 
         VALUES (%s, %s, %s, %s, %s, %s)"""
 
     cursor.execute(
