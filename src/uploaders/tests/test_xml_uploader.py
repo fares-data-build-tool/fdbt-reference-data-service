@@ -52,7 +52,7 @@ class TestDataCollectionFunctionality:
 
 class TestMainFunctionality:
     @patch('txc_uploader.txc_processor.write_to_database')
-    def test_integration_between_s3_download_and_database_write_functionality(self, db_patch, s3):
+    def test_integration_between_s3_download_and_database_write_functionality(self, db_patch, s3, cloudwatch):
         dir_path = os.path.dirname(os.path.realpath(__file__))
         mock_file_dir = dir_path + '/helpers/test_data/mock_txc.xml'
         mock_bucket = 'test-bucket'
@@ -66,6 +66,6 @@ class TestMainFunctionality:
                       Body=open(mock_file_dir, 'rb'))
 
         download_from_s3_and_write_to_db(
-            s3, mock_bucket, mock_key, mock_file_dir, db_connection, logger)
+            s3, cloudwatch, mock_bucket, mock_key, mock_file_dir, db_connection, logger)
         db_patch.assert_called_once_with(
             mock_data_dict, mock_key, db_connection, logger)
