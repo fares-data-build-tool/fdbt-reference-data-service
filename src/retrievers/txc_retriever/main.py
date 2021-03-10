@@ -14,6 +14,7 @@ file_dir = '/tmp/'
 
 s3 = boto3.resource('s3')
 ssm = boto3.client('ssm')
+cloudwatch = boto3.client('cloudwatch')
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
@@ -101,6 +102,8 @@ def upload_tnds_data_to_s3():
 
 
 def upload_bods_data_to_s3(zip_file):
+    xml_count = 0
+
     for filename in zip_file.namelist():
         if (filename.endswith('.xml')):
             s3.meta.client.upload_fileobj(
@@ -111,6 +114,9 @@ def upload_bods_data_to_s3(zip_file):
                     'ContentType': 'application/xml'
                 }
             )
+
+            xml_count += 1
+
         elif (filename.endswith('.zip')):
             s3.meta.client.upload_fileobj(
                 zip_file.open(filename),
@@ -120,6 +126,23 @@ def upload_bods_data_to_s3(zip_file):
                     'ContentType': 'application/zip'
                 }
             )
+
+    cloudwatch.put_metric_data(
+        MetricData = [
+            {
+                'MetricName': 'TxcFilesCopied',
+                'Dimensions': [
+                    {
+                        'Name': 'By Data Source',
+                        'Value': 'bods'
+                    },
+                ],
+                'Unit': 'None',
+                'Value': xml_count
+            },
+        ],
+        Namespace='FDBT/Reference-Data-Retrievers'
+    )
 
 
 def lambda_handler(event, context):

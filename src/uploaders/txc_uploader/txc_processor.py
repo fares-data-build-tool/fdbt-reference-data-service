@@ -3,7 +3,7 @@ import xmltodict
 import xml.etree.ElementTree as eT
 import pymysql
 
-NOC_INTEGRITY_ERROR = 'Cannot add or update a child row: a foreign key constraint fails (`fdbt`.`txcOperatorLine`, CONSTRAINT `fk_txcOperatorLine_nocTable_nocCode` FOREIGN KEY (`nocCode`) REFERENCES `nocTable` (`nocCode`))'
+NOC_INTEGRITY_ERROR_MSG = 'Cannot add or update a child row: a foreign key constraint fails (`fdbt`.`txcOperatorLine`, CONSTRAINT `fk_txcOperatorLine_nocTable_nocCode` FOREIGN KEY (`nocCode`) REFERENCES `nocTable` (`nocCode`))'
 
 
 def put_metric_data_by_data_source(cloudwatch, data_source, metric_name, metric_value):
@@ -231,7 +231,7 @@ def insert_into_txc_operator_service_table(cursor, operator, service, line, regi
 
         return operator_service_id
     except pymysql.IntegrityError as e:
-        if e.args[1] == NOC_INTEGRITY_ERROR:
+        if e.args[1] == NOC_INTEGRITY_ERROR_MSG:
             logger.info("NOC not found in database - '{}' - '{}'".format(
                 noc_code,
                 operator_short_name
@@ -266,7 +266,6 @@ def write_to_database(data_dict, region_code, data_source, key, db_connection, l
                 if 'NationalOperatorCode' not in operator:
                     logger.info("No NOC found for operator: '{}', in TXC file - '{}'".format(
                         operator.get('OperatorShortName', ''), key))
-                    put_metric_data_by_data_source(cloudwatch, data_source, 'NoNoc', 1)
 
                     continue
 
@@ -278,7 +277,6 @@ def write_to_database(data_dict, region_code, data_source, key, db_connection, l
                 if not services:
                     logger.info("No service data found for operator: '{}', in TXC file: '{}'".format(
                         operator['NationalOperatorCode'], key))
-                    put_metric_data_by_data_source(cloudwatch, data_source, 'NoServiceData', 1)
 
                     continue
 
@@ -293,7 +291,6 @@ def write_to_database(data_dict, region_code, data_source, key, db_connection, l
                     if not lines:
                         logger.info("No line data found for service: '{}', for operator: '{}', in TXC file: '{}'".format(
                             service.get('ServiceCode', ''), operator['NationalOperatorCode'], key))
-                        put_metric_data_by_data_source(cloudwatch, data_source, 'NoLineData', 1)
 
                         continue
 
@@ -312,8 +309,6 @@ def write_to_database(data_dict, region_code, data_source, key, db_connection, l
                         )
 
                         file_has_useable_data = True
-
-                        put_metric_data_by_data_source(cloudwatch, data_source, 'LinesProcessed', 1)
 
             if not file_has_nocs:
                 db_connection.rollback()
