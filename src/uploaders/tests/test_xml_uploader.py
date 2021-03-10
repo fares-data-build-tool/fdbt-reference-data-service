@@ -68,4 +68,4 @@ class TestMainFunctionality:
         download_from_s3_and_write_to_db(
             s3, cloudwatch, mock_bucket, mock_key, mock_file_dir, db_connection, logger)
         db_patch.assert_called_once_with(
-            mock_data_dict, 'tnds', 'WM', mock_key, db_connection, logger, cloudwatch)
+            mock_data_dict, 'WM', 'tnds', mock_key, db_connection, logger, cloudwatch)
