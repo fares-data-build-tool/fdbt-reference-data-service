@@ -8,13 +8,13 @@ provider:
     lambdaHashingVersion: 20201221
     vpc:
         securityGroupIds:
-            - Fn::ImportValue: test:ReferenceDataUploaderLambdaSG
+            - Fn::ImportValue: ${self:provider.stage}:ReferenceDataUploaderLambdaSG
         subnetIds:
-            - Fn::ImportValue: test:PrivateSubnetA
-            - Fn::ImportValue: test:PrivateSubnetB
+            - Fn::ImportValue: ${self:provider.stage}:PrivateSubnetA
+            - Fn::ImportValue: ${self:provider.stage}:PrivateSubnetB
     environment:
         RDS_HOST:
-            Fn::ImportValue: test:RdsClusterInternalEndpoint
+            Fn::ImportValue: ${self:provider.stage}:RdsClusterInternalEndpoint
     iam:
         role:
             statements:
@@ -74,17 +74,17 @@ custom:
         dashboards: false
         topics:
             ok:
-                topic: reference-data-service-uploaders-ok-topic-${self:provider.stage}
+                topic: reference-data-service-uploaders-ok-topic
                 notifications:
                     - protocol: lambda
                       endpoint:
-                          Fn::ImportValue: test:SlackAlertsFunctionArn
+                          Fn::ImportValue: ${self:provider.stage}:SlackAlertsFunctionArn
             alarm:
-                topic: reference-data-service-uploaders-alarm-topic-${self:provider.stage}
+                topic: reference-data-service-uploaders-alarm-topic
                 notifications:
                     - protocol: lambda
                       endpoint:
-                          Fn::ImportValue: test:SlackAlertsFunctionArn
+                          Fn::ImportValue: ${self:provider.stage}:SlackAlertsFunctionArn
         alarms:
             - functionThrottles
             - functionErrors
