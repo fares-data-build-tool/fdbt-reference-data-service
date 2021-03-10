@@ -56,7 +56,7 @@ class TestMainFunctionality:
         dir_path = os.path.dirname(os.path.realpath(__file__))
         mock_file_dir = dir_path + '/helpers/test_data/mock_txc.xml'
         mock_bucket = 'test-bucket'
-        mock_key = 'test-key'
+        mock_key = 'tnds/WM/test-key'
         db_connection = MagicMock()
         logger = MagicMock()
         conn = boto3.resource('s3', region_name='eu-west-2')
@@ -68,4 +68,4 @@ class TestMainFunctionality:
         download_from_s3_and_write_to_db(
             s3, cloudwatch, mock_bucket, mock_key, mock_file_dir, db_connection, logger)
         db_patch.assert_called_once_with(
-            mock_data_dict, mock_key, db_connection, logger)
+            mock_data_dict, 'tnds', 'WM', mock_key, db_connection, logger, cloudwatch)
