@@ -55,6 +55,10 @@ custom:
         test: false
         preprod: true
         prod: true
+    txcRetrieverSchedule:
+        test: cron(15 4 * * ? *)
+        preprod: cron(15 3 * * ? *)
+        prod: cron(15 2 * * ? *)
     alerts:
         dashboards: false
         topics:
@@ -138,7 +142,7 @@ functions:
                 Fn::ImportValue: ${self:provider.stage}:RdsClusterInternalEndpoint
         events:
             - schedule:
-                  rate: cron(15 2 * * ? *)
+                  rate: ${self:custom.txcRetrieverSchedule.${self:provider.stage}, cron(15 2 * * ? *)}
                   enabled: ${self:custom.enableSchedule.${self:provider.stage}, false}
         vpc:
             securityGroupIds:
