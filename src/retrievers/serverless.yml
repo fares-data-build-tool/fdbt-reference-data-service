@@ -132,7 +132,7 @@ functions:
         handler: txc_retriever/main.lambda_handler
         timeout: 600
         memorySize: 3072
-        maximumRetryAttempts: 0
+        maximumRetryAttempts: 2
         environment:
             TNDS_FTP_HOST: ftp.tnds.basemap.co.uk
             BODS_URL: https://data.bus-data.dft.gov.uk/timetable/download/bulk_archive
