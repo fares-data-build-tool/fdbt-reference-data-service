@@ -242,7 +242,52 @@ def insert_into_txc_operator_service_table(cursor, operator, service, line, regi
             return None
 
         raise
-        
+
+
+def check_txc_line_exists(cursor, operator, service, line, data_source, cloudwatch, logger):
+    (
+        noc_code,
+        start_date,
+        operator_short_name,
+        service_description,
+        service_code
+    ) = extract_data_for_txc_operator_service_table(operator, service)
+
+    query = f"""
+        SELECT id FROM txcOperatorLine
+        WHERE nocCode = %s AND lineName = %s AND serviceCode = %s AND startDate = %s AND dataSource = %s
+        LIMIT 1
+    """
+
+    cursor.execute(
+        query,
+        [
+            noc_code,
+            line['LineName'],
+            service_code,
+            start_date,
+            data_source
+        ]
+    )
+    result = cursor.fetchone()
+    operator_service_id = None
+    
+    if result and len(result) > 0:
+        operator_service_id = result[0]
+
+
+
+    if operator_service_id:
+        logger.info("Existing line found - '{}' - '{}' - '{}' - '{}' - '{}'".format(
+            noc_code,
+            line['LineName'],
+            service_code,
+            start_date,
+            data_source
+        ))
+
+    return operator_service_id
+
 
 def write_to_database(data_dict, region_code, data_source, key, db_connection, logger, cloudwatch):
     try:
@@ -297,8 +342,12 @@ def write_to_database(data_dict, region_code, data_source, key, db_connection, l
                     file_has_lines = True
 
                     for line in lines:
-                        operator_service_id = insert_into_txc_operator_service_table(
-                            cursor, operator, service, line, region_code, data_source, cloudwatch, logger)
+                        operator_service_id = check_txc_line_exists(
+                            cursor, operator, service, line, data_source, cloudwatch, logger)
+
+                        if not operator_service_id:
+                            operator_service_id = insert_into_txc_operator_service_table(
+                                cursor, operator, service, line, region_code, data_source, cloudwatch, logger)
 
                         if not operator_service_id:
                             valid_noc = False
