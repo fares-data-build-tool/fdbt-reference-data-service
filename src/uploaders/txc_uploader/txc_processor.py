@@ -213,12 +213,14 @@ def insert_into_txc_operator_service_table(cursor, operator, service, line, regi
     query = f"""INSERT INTO txcOperatorLine (nocCode, lineName, startDate, operatorShortName, serviceDescription, serviceCode, regionCode, dataSource)
         VALUES (%s, %s, %s, %s, %s, %s, %s, %s)"""
 
+    line_name = line.get('LineName', '')
+
     try:
         cursor.execute(
             query,
             [
                 noc_code,
-                line['LineName'],
+                line_name,
                 start_date,
                 operator_short_name,
                 service_description,
@@ -232,10 +234,7 @@ def insert_into_txc_operator_service_table(cursor, operator, service, line, regi
         return operator_service_id
     except pymysql.IntegrityError as e:
         if e.args[1] == NOC_INTEGRITY_ERROR_MSG:
-            logger.info("NOC not found in database - '{}' - '{}'".format(
-                noc_code,
-                operator_short_name
-            ))
+            logger.info(f"NOC not found in database - '{noc_code}' - '{operator_short_name}'")
 
             put_metric_data_by_data_source(cloudwatch, data_source, 'InvalidNoc', 1)
 
@@ -259,32 +258,23 @@ def check_txc_line_exists(cursor, operator, service, line, data_source, cloudwat
         LIMIT 1
     """
 
+    line_name = line.get('LineName', '')
+
     cursor.execute(
         query,
         [
             noc_code,
-            line['LineName'],
+            line_name,
             service_code,
             start_date,
             data_source
         ]
     )
     result = cursor.fetchone()
-    operator_service_id = None
+    operator_service_id = result[0] if result and len(result) > 0 else None
     
-    if result and len(result) > 0:
-        operator_service_id = result[0]
-
-
-
     if operator_service_id:
-        logger.info("Existing line found - '{}' - '{}' - '{}' - '{}' - '{}'".format(
-            noc_code,
-            line['LineName'],
-            service_code,
-            start_date,
-            data_source
-        ))
+        logger.info(f"Existing line found - '{noc_code}' - '{line_name}' - '{service_code}' - '{start_date}' - '{data_source}'")
 
     return operator_service_id
 
@@ -294,7 +284,7 @@ def write_to_database(data_dict, region_code, data_source, key, db_connection, l
         operators = get_operators(data_dict, data_source, cloudwatch)
 
         if not operators:
-            logger.info("No operator data found in TXC file - '{}'".format(key))
+            logger.info(f"No operator data found in TXC file - '{key}'")
             put_metric_data_by_data_source(cloudwatch, data_source, 'NoOperatorData', 1)
 
             return False
@@ -309,8 +299,7 @@ def write_to_database(data_dict, region_code, data_source, key, db_connection, l
 
             for operator in operators:
                 if 'NationalOperatorCode' not in operator:
-                    logger.info("No NOC found for operator: '{}', in TXC file - '{}'".format(
-                        operator.get('OperatorShortName', ''), key))
+                    logger.info(f"No NOC found for operator: '{operator.get('OperatorShortName', '')}', in TXC file - '{key}'")
 
                     continue
 
@@ -318,10 +307,10 @@ def write_to_database(data_dict, region_code, data_source, key, db_connection, l
                 valid_noc = True
 
                 services = get_services_for_operator(data_dict, operator)
+                noc = operator.get('NationalOperatorCode', '')
 
                 if not services:
-                    logger.info("No service data found for operator: '{}', in TXC file: '{}'".format(
-                        operator['NationalOperatorCode'], key))
+                    logger.info(f"No service data found for operator: '{noc}', in TXC file: '{key}'")
 
                     continue
 
@@ -334,8 +323,7 @@ def write_to_database(data_dict, region_code, data_source, key, db_connection, l
                     lines = get_lines_for_service(service)
 
                     if not lines:
-                        logger.info("No line data found for service: '{}', for operator: '{}', in TXC file: '{}'".format(
-                            service.get('ServiceCode', ''), operator['NationalOperatorCode'], key))
+                        logger.info(f"No line data found for service: '{service.get('ServiceCode', '')}', for operator: '{noc}', in TXC file: '{key}'")
 
                         continue
 
@@ -361,28 +349,28 @@ def write_to_database(data_dict, region_code, data_source, key, db_connection, l
 
             if not file_has_nocs:
                 db_connection.rollback()
-                logger.info("No NOCs found in TXC file: '{}'".format(key))
+                logger.info(f"No NOCs found in TXC file: '{key}'")
                 put_metric_data_by_data_source(cloudwatch, data_source, 'NoNOCsInFile', 1)
 
                 return False
 
             if not file_has_services:
                 db_connection.rollback()
-                logger.info("No service data found in TXC file: '{}'".format(key))
+                logger.info(f"No service data found in TXC file: '{key}'")
                 put_metric_data_by_data_source(cloudwatch, data_source, 'NoServiceDataInFile', 1)
 
                 return False
 
             if not file_has_lines:
                 db_connection.rollback()
-                logger.info("No line data found in TXC file: '{}'".format(key))
+                logger.info(f"No line data found in TXC file: '{key}'")
                 put_metric_data_by_data_source(cloudwatch, data_source, 'NoLineDataInFile', 1)
 
                 return False
 
             if not file_has_useable_data:
                 db_connection.rollback()
-                logger.info("No useable data found in TXC file: '{}'".format(key))
+                logger.info(f"No useable data found in TXC file: '{key}'")
                 put_metric_data_by_data_source(cloudwatch, data_source, 'NoUseableDataInFile', 1)
 
                 return False
@@ -403,7 +391,7 @@ def download_from_s3_and_write_to_db(s3, cloudwatch, bucket, key, file_path, db_
     xmltodict_namespaces = {'http://www.transxchange.org.uk/': None}
 
     s3.download_file(bucket, key, file_path)
-    logger.info("Downloaded S3 file, '{}' to '{}'".format(key, file_path))
+    logger.info(f"Downloaded S3 file, '{key}' to '{file_path}'")
     tree = eT.parse(file_path)
     xml_data = tree.getroot()
     xml_string = eT.tostring(xml_data, encoding='utf-8', method='xml')
@@ -419,19 +407,13 @@ def download_from_s3_and_write_to_db(s3, cloudwatch, bucket, key, file_path, db_
 
     if written_success:
         logger.info(
-            "SUCCESS! Succesfully wrote contents of '{}' from '{}' bucket to database.".format(
-                key,
-                bucket
-            )
+            f"SUCCESS! Succesfully wrote contents of '{key}' from '{bucket}' bucket to database."
         )
 
         put_metric_data_by_data_source(cloudwatch, data_source, 'FilesProcessedWithData', 1)
     else:
         logger.info(
-            "No data written to database for file '{}' from '{}' bucket.".format(
-                key,
-                bucket
-            )
+            f"No data written to database for file '{key}' from '{bucket}' bucket."
         )
 
         put_metric_data_by_data_source(cloudwatch, data_source, 'FilesProcessedNoData', 1)
